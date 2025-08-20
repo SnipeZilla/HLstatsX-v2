@@ -35,7 +35,7 @@
 
 # HLstatsX CE release version number
 
-$g_version = "2.0.0";
+$g_version = "2.0.1";
 my %db_stmt_cache = ();
 
 %g_eventTables = (
@@ -156,7 +156,7 @@ sub doConnect {
         $db_conn = DBI->connect(
             $dsn, $db_user, $db_pass,
             {
-                RaiseError           => 1,
+                RaiseError           => 0,
                 PrintError           => 0,
                 mysql_enable_utf8mb4 => 1,
                 mysql_auto_reconnect => 1,
@@ -222,8 +222,6 @@ sub execCached {
     unless ($db_conn->ping()) {
         &printEvent("HLSTATSX", "Lost database connection. Trying to reconnect...", 1);
         &doConnect();
-        # Clear cache on reconnect to avoid stale handles
-        %db_stmt_cache = ();
     }
 
     unless ($db_stmt_cache{$query_id}) {
