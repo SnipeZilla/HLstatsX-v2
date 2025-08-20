@@ -349,9 +349,9 @@ sub flushEventTable
         $query .= $_.",";
     }
     $query =~ s/,$//;
-    execNonQuery($query);
-    $g_eventtable_data{$table}{lastflush} = $ev_daemontime;
     $g_eventtable_data{$table}{queue} = [];
+    $g_eventtable_data{$table}{lastflush} = $ev_daemontime;
+    execNonQuery($query);
 
 }
 
@@ -1303,7 +1303,7 @@ sub getPlayerInfo
                         uniqueid => $uniqueid,
                         plain_uniqueid => $plainuniqueid,
                         game => $g_servers{$s_addr}->{game},
-                        name => $name,
+                        name => substr($name,0,64),
                         team => $team,
                         role => $role,
                         is_bot => $bot
