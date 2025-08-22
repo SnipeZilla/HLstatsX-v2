@@ -34,7 +34,6 @@
 # 
 # For support and installation notes visit http://www.hlxcommunity.com
 
-
 ##
 ## Settings
 ##
@@ -52,8 +51,6 @@ my $opt_libdir = "./";
 ################################################################################
 ## No need to edit below this line
 ##
-
-
 use Getopt::Long;
 use DBI;
 use Encode;
@@ -199,18 +196,8 @@ print "-- Connecting to MySQL database '$db_name' on '$db_host' as user '$db_use
 
 print "connected OK\n";
 
-#$result = &doQuery("
-#	SELECT
-#		value
-#	FROM
-#		hlstats_Options
-#	WHERE
-#		keyname='version'
-#");
+my $g_version = $::g_version;
 
-if ($result->rows > 0) {
-	$g_version = $result->fetchrow_array;
-}
 
 if ($opt_version)
 {
@@ -253,6 +240,7 @@ DoClans() if ($opt_clans);
               SET value='$g_version'
               WHERE keyname='version';");
 print "\n++ HLstatsX:CE Awards & Maintenance script finished.\n\n";
+sleep(5);
 exit(0);
 
 sub DoInactive
@@ -889,84 +877,81 @@ sub DoAwards
 	print "done\n";
 }
 
-sub DoRibbons
-{
-	print "++ Processing ribbons... ";
-	
-	my $result = &doQuery("SELECT `code` FROM `hlstats_Games`;");
-	while( my($game) = $result->fetchrow_array ) {
+sub DoRibbons {
+    print "++ Processing ribbons... ";
 
-		&execNonQuery("DELETE FROM hlstats_Players_Ribbons WHERE game='".&quoteSQL($game)."';");
-		
-		$result2 = &doQuery("
-			SELECT
-				`ribbonId`,
-				`awardCode`,
-				`awardCount`,
-				`special`
-			FROM
-				`hlstats_Ribbons`
-			WHERE
-				game='".&quoteSQL($game)."' AND
-				(special=0 OR special=2);
-			");
-		while ( my($ribbonid, $code, $count, $special) = $result2->fetchrow_array ) {
-			# scan players for each ribbon ID
-			if ($special==2) {
-			# connection time
-				$result3 = &doQuery("
-					SELECT
-						playerId,
-						(connection_time/3600) AS CNT
-					FROM
-						hlstats_Players
-					WHERE
-						game='".&quoteSQL($game)."' 
-						AND hlstats_Players.hideranking=0
-						AND (connection_time/3600)>=".$count."
-					");
-			} else {
-				# awards ribbons
-				$having = "CNT>=".$count;
-				$result3 = &doQuery("
-					SELECT
-						hlstats_Players_Awards.playerId,
-						COUNT(hlstats_Players_Awards.playerId) AS CNT
-					FROM
-						hlstats_Players_Awards
-					INNER JOIN
-						hlstats_Awards
-					ON
-						(hlstats_Awards.awardId=hlstats_Players_Awards.awardId AND
-						hlstats_Awards.game=hlstats_Players_Awards.game)
-					INNER JOIN
-						hlstats_Players
-					ON
-						hlstats_Players.playerId = hlstats_Players_Awards.playerId
-						AND hlstats_Players.hideranking=0
-					WHERE
-						hlstats_Players_Awards.game='".&quoteSQL($game)."' AND
-						hlstats_Awards.code='".$code."' AND
-						hlstats_Awards.awardType<>'V'
-					GROUP BY
-						hlstats_Players_Awards.playerId    	
-					HAVING
-						".$having."  
-					");
-			}
+    my %ribbons_by_game;
+    my $ribbon_rs = &doQuery("
+        SELECT ribbonId, awardCode, awardCount, special, game
+        FROM hlstats_Ribbons
+        WHERE special IN (0,2)
+    ");
+    while ( my ($rid, $code, $count, $special, $game) = $ribbon_rs->fetchrow_array ) {
+        push @{ $ribbons_by_game{$game} }, {
+            ribbonId => $rid,
+            code     => $code,
+            count    => $count,
+            special  => $special
+        };
+    }
 
-			while (my($playerid, $cnt) = $result3->fetchrow_array) {
-				&execNonQuery("
-					INSERT INTO hlstats_Players_Ribbons
-						(playerId, ribbonId, game)
-					VALUES
-						(".$playerid.",".$ribbonid.",'".&quoteSQL($game)."')
-					");  
-			}
-		}  
+    my $games_rs = &doQuery("SELECT code FROM hlstats_Games;");
+    while ( my ($game) = $games_rs->fetchrow_array ) {
+        my $esc_game = &quoteSQL($game);
 
-	}
-	print "done\n";
+        &execNonQuery("DELETE FROM hlstats_Players_Ribbons WHERE game='$esc_game'");
+
+        next unless exists $ribbons_by_game{$game};
+
+        for my $ribbon (@{ $ribbons_by_game{$game} }) {
+            my $rid    = $ribbon->{ribbonId};
+            my $count  = $ribbon->{count};
+
+            my $players_rs;
+
+            if ( $ribbon->{special} == 2 ) {
+
+                $players_rs = &doQuery("
+                    SELECT playerId
+                    FROM hlstats_Players
+                    WHERE game='$esc_game'
+                      AND hideranking=0
+                      AND (connection_time/3600) >= $count
+                ");
+            }
+            else {
+                # Award ribbons
+                $players_rs = &doQuery("
+                    SELECT pa.playerId
+                    FROM hlstats_Players_Awards pa
+                    JOIN hlstats_Awards a
+                      ON a.awardId=pa.awardId
+                     AND a.game=pa.game
+                    JOIN hlstats_Players p
+                      ON p.playerId=pa.playerId
+                     AND p.hideranking=0
+                    WHERE pa.game='$esc_game'
+                      AND a.code='".$ribbon->{code}."'
+                      AND a.awardType<>'V'
+                    GROUP BY pa.playerId
+                    HAVING COUNT(pa.playerId) >= $count
+                ");
+            }
+
+            my @values;
+            while ( my ($pid) = $players_rs->fetchrow_array ) {
+                push @values, "($pid,$rid,'$esc_game')";
+            }
+            if (@values) {
+                &execNonQuery("
+                    INSERT INTO hlstats_Players_Ribbons (playerId, ribbonId, game)
+                    VALUES ".join(',', @values)
+                );
+            }
+        }
+    }
+
+    print "done\n";
 }
 
 sub DoGeoIP
