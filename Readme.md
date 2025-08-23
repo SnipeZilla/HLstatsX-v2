@@ -48,7 +48,7 @@ Whether you're running a community server or a high-performance competitive hub,
 
 ---
 
-## 💡 Why HLstatsX:CE 2.0.0?
+## 💡 Why HLstatsX:CE v2?
 
 - **Battle-tested**: Proven across thousands of servers and millions of player sessions
 - **Zero client-side footprint**: No in-game installs required
