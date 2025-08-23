@@ -53,7 +53,7 @@ Whether you're running a community server or a high-performance competitive hub,
 - **Battle-tested**: Proven across thousands of servers and millions of player sessions
 - **Zero client-side footprint**: No in-game installs required
 - **External server support**: Offload processing for zero impact on game performance
-- **Fully async**: RCON, log ingestion, and DB operations are non-blocking and restart-safe
+- **Fully async**: RCON, log ingestion operations are non-blocking and restart-safe
 - **Built for CS2**: Competitive mode, Source 2 quirks, and HTTP logging all handled natively
 
 ---
