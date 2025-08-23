@@ -4,7 +4,7 @@
 
 HLstatsX:CE v2 is a full-scale rework of the classic real-time stats and ranking system for `srcds`-based games. Designed to thrive in both legacy Source 1 environments and modern CS2 servers, this fork introduces asynchronous RCON, hybrid log ingestion (UDP + HTTP), competitive mode awareness, and a scalable, restart-safe architecture.
 
-Whether you're running a community server or a high-performance competitive hub, HLstatsX:CE 2.0.0 delivers unmatched reliability, flexibility, and insight.
+Whether you're running a community server or a high-performance competitive hub, HLstatsX:CE v2 delivers unmatched reliability, flexibility, and insight.
 
 ---
 
