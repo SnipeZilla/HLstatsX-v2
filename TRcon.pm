@@ -41,7 +41,7 @@ use strict;
 no strict 'vars';
 
 use Sys::Hostname;
-use IO::Socket;
+use IO::Socket::INET;
 use IO::Select;
 use bytes;
 use Scalar::Util;
@@ -112,13 +112,13 @@ sub get_auth_code
 
 }
 
-
 sub sendrecv
 {
   my ($self, $msg, $splitted_answer) = @_;
 
   my $server_object = $self->{"server_object"};
-  if (!$self->{"rcon_socket"} || $self->{"rcon_serr"})  {
+
+  if (!$self->{"rcon_socket"} || $self->{rcon_err} )  {
 
       if ($self->{"rcon_socket"}) {
           shutdown($self->{"rcon_socket"}, 2);
@@ -141,19 +141,20 @@ sub sendrecv
       } else {
           binmode($self->{"rcon_socket"}, ':raw');
           $self->{"rcon_socket"}->autoflush(1);
-          $self->{"rcon_serr"} = 0;
+          $self->{"rcon_err"} = 0;
           &::printEvent("TRCON", " TCP socket is now open on $server_object->{address}:$server_object->{port}: $!",1,1);
       }
 
       $self->{"auth"} = 0;
   }
+
   my $r_socket  = $self->{"rcon_socket"};
   my $server    = $self->{"server_object"};
-
   my $auth      = $self->{"auth"};
   my $response  = "";
 
   if (($r_socket) && ($r_socket->connected() )) {
+
     if ($auth == 0)  {
       &::printEvent("TRCON", "Trying to get rcon access (auth)",1);
       if ($self->send_rcon($AUTH_PACKET_ID, $SERVERDATA_AUTH, $server->{rcon}, 1)) {
@@ -169,7 +170,8 @@ sub sendrecv
          &::printEvent("TRCON", "Junk packet from Source Engine");
          my ($id, $command, $response) = $self->recieve_rcon($AUTH_PACKET_ID);
          $auth = $self->get_auth_code($id);
-      }  
+      }
+
     }
 
      if ($auth == 1)  {
@@ -189,7 +191,7 @@ sub sendrecv
     }
 
   } else {
-     $self->{"rcon_serr"}++;
+     $self->{"rcon_err"}++;
   } 
   return;
   
@@ -434,7 +436,7 @@ sub getPlayers
     my $command = $self->{server_object}->{play_game} == CS2() ? "users;status" : "status";
     my $server = "$self->{server_object}->{address}:$self->{server_object}->{port}";
     my $status = eval { $self->execute($command, 1); };
-    $self->{server_object}->{rcon_obj}->{socket_err}++ if $@;
+    $self->{server_object}->{rcon_obj}->{rcon_err}++ if $@;
     return ("", -1, "", 0) unless $status;
 
     my @lines = split(/[\r\n]+/, $status);
