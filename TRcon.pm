@@ -439,7 +439,10 @@ sub getPlayers
     my $command = $self->{server_object}->{play_game} == CS2() ? "users;status" : "status";
     my $server = "$self->{server_object}->{address}:$self->{server_object}->{port}";
     my $status = $self->execute($command, 1);
-    return ("", -1, "", 0) unless $status;
+    unless ($status) {
+        $self->{rcon_err}++;
+        return ("", -1, "", 0);
+    }
 
     my @lines = split(/[\r\n]+/, $status);
     my %players;
