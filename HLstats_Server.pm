@@ -613,8 +613,8 @@ sub get_map
 
                 if (defined $host) {
                     $temp_map          = $host{"map"};
-                    $temp_maxplayers   = $host{"map"};
-                    $servhostname      = $host{"map"};
+                    $temp_maxplayers   = $host{"max_players"};
+                    $servhostname      = $host{"name"};
                     $difficulty        = $host{"difficulty"} // 0;
                 } else {
                     ($temp_map, $temp_maxplayers, $servhostname, $difficulty) = $self->rcon_getStatus();
