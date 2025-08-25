@@ -302,7 +302,10 @@ sub recieve_rcon
     my ($self, $packet_id, $splitted_answer) = @_;
 
     my $sock = $self->{"rcon_socket"};
-    return (-1, -1, undef) unless $sock && $sock->connected();
+    unless(IO::Select->new($sock)->can_read($TIMEOUT) && $sock->connected()) {
+        $self->{rcon_err}++;
+        return (-1, -1, undef);
+    }
 
     # done
     my ($buf, $done) = _inbox_take($self, $packet_id);
@@ -435,8 +438,7 @@ sub getPlayers
     my ($self,$steamid,$slot_name) = @_;
     my $command = $self->{server_object}->{play_game} == CS2() ? "users;status" : "status";
     my $server = "$self->{server_object}->{address}:$self->{server_object}->{port}";
-    my $status = eval { $self->execute($command, 1); };
-    $self->{server_object}->{rcon_obj}->{rcon_err}++ if $@;
+    my $status = $self->execute($command, 1);
     return ("", -1, "", 0) unless $status;
 
     my @lines = split(/[\r\n]+/, $status);
