@@ -1634,7 +1634,7 @@ sub handleIncoming
     $s_output =~ s/^\s+//;
     $s_output =~ s/\s+$//;
     return unless length $s_output;
-    &printEvent($source, $s_output,3);
+    print "[$source] $s_output\n" if $g_debug == 3;
 
     # Proxy filter
     if (($s_output =~ /^.*PROXY Key=(.+) (.*)PROXY.+/) && $proxy_key ne "") {
@@ -1958,7 +1958,7 @@ sub handleIncoming
             }
         }
     } else {
-        &printEvent(998, "MALFORMED DATA: " . $s_output,2);
+        &printEvent(998, "MALFORMED DATA: " . $s_output,4);
         return;
     }
 
@@ -3107,9 +3107,9 @@ EOT
        }
 
         if ($ev_status ne "") {
-            &printEvent($ev_type, $ev_status,2);
+            &printEvent($ev_type, $ev_status,4);
         } else {
-            &printEvent($ev_type, "BAD DATA: $s_output",2);
+            &printEvent($ev_type, "BAD DATA: $s_output",4);
         }
     } elsif (($s_output =~ /^Banid: "(.+?(?:<.+?>)*)" was (?:kicked and )?banned "for ([0-9]+).00 minutes" by "Console"$/) ||
         ($s_output =~ /^Banid: "(.+?(?:<.+?>)*)" was (?:kicked and )?banned "(permanently)" by "Console"$/)) {
@@ -3200,8 +3200,8 @@ sub handleData
 {
     $ev_unixtime   = time();
     $ev_daemontime = $ev_unixtime;
-
-    foreach my $server (keys %g_servers)
+ 
+     foreach my $server (keys %g_servers)
     {
         next unless blessed($g_servers{$server});
         my $last_event = int($ev_daemontime-$g_servers{$server}->{next_timeout});
@@ -3233,12 +3233,9 @@ sub handleData
                         }
                     }
                 }
-                # update map
-                $g_servers{$server}->{last_check} = time();
-                if ( defined $status_players{"host"}{"map"} && $status_players{"host"}{"map"} ne $g_servers{$server}->{map} ) {
-                    $g_servers{$server}->{needsupdate} = 1;
-                    $g_servers{$server}->{map} = $status_players{"host"}{"map"};
-                }
+                # update map/hostname
+                $g_servers{$server}->get_map(undef,$status_players{"host"}) if ( defined $status_players{"host"}{"map"} );
+
             }
             $g_servers{$server}->{next_timeout}=$ev_daemontime+30+rand(30);
         }

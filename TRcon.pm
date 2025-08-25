@@ -49,7 +49,7 @@ use Scalar::Util;
 do "$::opt_libdir/HLstats_GameConstants.plib";
 
 my $VERSION = "2.00";
-my $TIMEOUT = 1.0;
+my $TIMEOUT = 2.0;
 
 my $SERVERDATA_EXECCOMMAND        = 2;
 my $SERVERDATA_AUTH               = 3;
@@ -133,7 +133,7 @@ sub sendrecv
           Proto    => "tcp",
           PeerAddr => $server_object->{address},
           PeerPort => $server_object->{port},
-          Timeout  => 2,
+          Timeout  => $TIMEOUT,
       );
 
       unless ($self->{"rcon_socket"}) {
@@ -141,7 +141,6 @@ sub sendrecv
       } else {
           binmode($self->{"rcon_socket"}, ':raw');
           $self->{"rcon_socket"}->autoflush(1);
-          $self->{"rcon_err"} = 0;
           &::printEvent("TRCON", " TCP socket is now open on $server_object->{address}:$server_object->{port}: $!",1,1);
       }
 
@@ -174,9 +173,11 @@ sub sendrecv
 
     }
 
-     if ($auth == 1)  {
+    if ($auth == 1)  {
 
         my $req_id;
+        $self->{rcon_err} = 0;
+
         if ($splitted_answer // 0) {
             $req_id = $self->send_command_with_sentinel($msg);
             return unless $req_id && $req_id !~ /^(?:0|1)$/;
@@ -186,12 +187,12 @@ sub sendrecv
         }
 
         my ($id, $command, $response) = $self->recieve_rcon($req_id, $splitted_answer);
-
         return $response;
+
     }
 
   } else {
-     $self->{"rcon_err"}++;
+     $self->{rcon_err}++;
   } 
   return;
   
@@ -232,6 +233,11 @@ sub send_rcon
     }
 
     my $n = syswrite($sock, $data);
+    if ($!) {
+        $self->{rcon_err}++;
+        &::printEvent("RCON", "$!",1);
+    }
+
     return ($n // 0) == length($data) ? 0 : 1;
 }
 
@@ -271,7 +277,11 @@ sub _recv_one_packet {
     my ($sock, $timeout) = @_;
 
     my $sel = IO::Select->new($sock);
-    return unless $sel->can_read($timeout);
+    unless ($sel->can_read($timeout)) {
+        &::printEvent("RCON", "Socket can't read: stalled or crashed", 1);
+        $self->{rcon_err}++;
+        return;
+    }
 
     my $hdr = _read_exact($sock, 4);
     unless ($hdr) {
@@ -302,7 +312,7 @@ sub recieve_rcon
     my ($self, $packet_id, $splitted_answer) = @_;
 
     my $sock = $self->{"rcon_socket"};
-    unless(IO::Select->new($sock)->can_read($TIMEOUT) && $sock->connected()) {
+    unless($sock && $sock->connected()) {
         $self->{rcon_err}++;
         return (-1, -1, undef);
     }
@@ -349,6 +359,8 @@ sub recieve_rcon
     }
 
     # Deadline reached.
+    &::printEvent("RCON", "Timeout: Socket stalled", 1);
+    $self->{rcon_err}++ unless $msg;
     return ( ($msg ne '') ? ($packet_id, $SERVERDATA_RESPONSE_VALUE, $msg) : (-1, -1, undef) );
 }
 
@@ -436,13 +448,11 @@ sub updateSlot
 sub getPlayers
 {
     my ($self,$steamid,$slot_name) = @_;
-    my $command = $self->{server_object}->{play_game} == CS2() ? "users;status" : "status";
+   my $game = $self->{server_object}->{play_game} ;
+    my $command = ($game == CS2()) ? "users;status" : ($game == L4D()) ? "z_difficulty;status" : "status";
     my $server = "$self->{server_object}->{address}:$self->{server_object}->{port}";
     my $status = $self->execute($command, 1);
-    unless ($status) {
-        $self->{rcon_err}++;
-        return ("", -1, "", 0);
-    }
+    return ("", -1, "", 0) unless $status;
 
     my @lines = split(/[\r\n]+/, $status);
     my %players;
@@ -468,6 +478,10 @@ sub getPlayers
         if ($line =~ /^(\d+):(\d+):"([^"]+)"$/) {
             $userid_to_slot{$2} = $1; 
             next;
+        }
+        # L4D difficulty
+        elsif ($line =~ /^\s*"z_difficulty"\s*=\s*"([A-Za-z]+)".*$/x)  {
+            $players{"host"}{"difficulty"} = exists($l4d_difficulties{$1}) ? $l4d_difficulties{$1} : 0;
         }
         # 'status'
         elsif ($line =~ /^\s*hostname\s*:\s*([\S].*)$/) {

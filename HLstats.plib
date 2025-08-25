@@ -35,7 +35,7 @@
 
 # HLstatsX CE release version number
 
-$g_version = "2.1.2";
+$g_version = "2.1.3";
 my %db_stmt_cache = ();
 
 %g_eventTables = (
@@ -286,7 +286,7 @@ sub resolveIp
 		$host = "";		# ip did not resolve to any host
 	} else {
 		$host = lc($host);	# lowercase
-		printEvent("DNS", "Resolving hostname (timeout $g_dns_timeout sec) for IP \"$ip\" - $host ", 1);
+		printEvent("DNS", "hostname resolved for IP \"$ip\" - $host ", 1);
 	}
 	chomp($host);
 	return $host;

@@ -595,77 +595,66 @@ sub dostats
 
 sub get_map
 {
-    my ($self, $fromupdate) = @_;
+    my ($self, $fromupdate, $host) = @_;
 
     if (!defined $::g_stdin || $::g_stdin == 0) {
-        if ((time() - $self->{last_check})>120) {
+
+        if ( ( (time() - $self->{last_check}) > 120 ) || ( defined $host && $self->{map} ne $host{"map"} ) ) {
+
             $self->{last_check} = time();
-            &::printEvent("RCON","get_map",2);
+            &::printEvent("RCON","get_map",4);
             my $temp_map        = "";
             my $temp_maxplayers = -1;
             my $servhostname      = "";
             my $difficulty      = 0;
             my $update          = 0;
             
-            if ($self->{rcon_obj})
-            {
-                ($temp_map, $temp_maxplayers, $servhostname, $difficulty) = $self->rcon_getStatus();
-                
-                if ($temp_map eq "") {
-                    goto STATUSFAIL;
+            if ($self->{rcon_obj}) {
+
+                if (defined $host) {
+                    $temp_map          = $host{"map"};
+                    $temp_maxplayers   = $host{"map"};
+                    $servhostname      = $host{"map"};
+                    $difficulty        = $host{"difficulty"} // 0;
+                } else {
+                    ($temp_map, $temp_maxplayers, $servhostname, $difficulty) = $self->rcon_getStatus();
                 }
-                
-                if ($self->{map} ne $temp_map) {
-                    $self->{map} = $temp_map;
-                    $update++;
-                }
-            
-                if (($temp_maxplayers != -1) && ($temp_maxplayers > 0) && ($temp_maxplayers ne "")) {
-                    if ($self->{maxplayers} != $temp_maxplayers) {
-                        $self->{maxplayers} = $temp_maxplayers;
+
+                if ($temp_map) {
+
+                    if ($self->{map} ne $temp_map) {
+                        $self->{map} = $temp_map;
                         $update++;
                     }
-                }
-                if (($difficulty > 0) && ($self->{play_game} == L4D())) {
-                    $self->{difficulty} = $difficulty;
-                }
-                if (($self->{update_hostname} > 0) && ($self->{name} ne $servhostname) && ($servhostname ne "")) {
-                        $self->{name} = $servhostname;
-                        $update++;
-                }
-            }
-            else
-            {  # no rcon or status command failed
-            STATUSFAIL:
-                &::printEvent("RCON","get_map failed",2,1);
-                my ($querymap, $queryhost, $querymax) = &::queryServer($self->{address}, $self->{port}, 'mapname', 'hostname', 'maxplayers');
-                if (defined $querymap && $querymap ne "") {
-                    $self->{map} = $querymap;
-                    $update++;
-                    
-                    #if map is blank, query likely failed as a whole
-                    
-                    if (($querymax != -1) && ($querymax > 0)) {
-                        if ($self->{maxplayers} != $querymax) {
-                            $self->{maxplayers} = $querymax;
+
+                    if (($temp_maxplayers != -1) && ($temp_maxplayers > 0) && ($temp_maxplayers ne "")) {
+                        if ($self->{maxplayers} != $temp_maxplayers) {
+                            $self->{maxplayers} = $temp_maxplayers;
                             $update++;
                         }
                     }
-                    if ($self->{update_hostname} > 0 && $queryhost ne "" && $self->{name} ne $queryhost) {
-                        $self->{name} = $queryhost;
+                    if (($difficulty > 0) && ($self->{play_game} == L4D())) {
+                        $self->{difficulty} = $difficulty;
+                    }
+                    if (($self->{update_hostname} > 0) && ($self->{name} ne $servhostname) && ($servhostname ne "")) {
+                        $self->{name} = $servhostname;
                         $update++;
                     }
+
                 }
+
             }
-                
+
             if ($update > 0 && $fromupdate // 0 == 0) {
                 $self->updateDB();
             }
-          
+
             &::printEvent("RCON","get_map successfully",2,1);
         }
-    }  
+    }
+
     return $self->{map};
+
 }
 
 sub update_players_pings
@@ -1078,26 +1067,23 @@ sub flushDB
     
     my $serverid      = $self->{id};
 
-    if ($self->{total_kills} == 0)
-    {
-        my $result = &::execCached(
-            "get_server_player_info",
-            "SELECT
-                kills,
-                headshots,
-                suicides,
-                rounds,
-                ct_shots+ts_shots as shots,
-                ct_hits+ts_hits as hits
-            FROM
-                hlstats_Servers
-            WHERE
-                serverId=?",
-            $self->{id}
-            );
-        ($self->{total_kills}, $self->{total_headshots}, $self->{total_suicides},$self->{total_rounds},$self->{total_shots},$self->{total_hits}) = $result->fetchrow_array();
-        $result->finish;
-    }   
+    my $result = &::execCached(
+        "get_server_player_info",
+        "SELECT
+            kills,
+            headshots,
+            suicides,
+            rounds,
+            ct_shots+ts_shots as shots,
+            ct_hits+ts_hits as hits
+        FROM
+            hlstats_Servers
+        WHERE
+            serverId=?",
+        $self->{id}
+        );
+    ($self->{total_kills}, $self->{total_headshots}, $self->{total_suicides},$self->{total_rounds},$self->{total_shots},$self->{total_hits}) = $result->fetchrow_array();
+    $result->finish;
 
     my $result = &::execCached(
         "get_player_count",
@@ -1207,14 +1193,6 @@ sub update_server_loc
     my $server_ip   = $self->{address};
     my $publicaddress = $self->{publicaddress};
 
-    #if ($publicaddress =~ /^(\d+\.\d+\.\d+\.\d+)/) {
-    #    $server_ip = $publicaddress;
-    #} elsif ($publicaddress =~ /^([0-9a-zA-Z\-\.]+)\:*.*/) {
-    #    my $hostip = inet_aton($1);
-    #    if ($hostip) {
-    #        $server_ip = inet_ntoa($hostip);
-    #    }
-    #}
     my $found = 0;
     my $servcity = undef;
     my $servcountry = undef;
