@@ -1078,8 +1078,8 @@ sub flushDB
     
     my $serverid      = $self->{id};
 
-    if ($self->{total_kills} == 0)
-    {
+    #if ($self->{total_kills} == 0)
+    #{
         my $result = &::execCached(
             "get_server_player_info",
             "SELECT
@@ -1097,7 +1097,7 @@ sub flushDB
             );
         ($self->{total_kills}, $self->{total_headshots}, $self->{total_suicides},$self->{total_rounds},$self->{total_shots},$self->{total_hits}) = $result->fetchrow_array();
         $result->finish;
-    }   
+    #}   
 
     my $result = &::execCached(
         "get_player_count",
