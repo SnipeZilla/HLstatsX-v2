@@ -387,7 +387,7 @@ sub setName
 {
     my ($self, $name) = @_; 
     # Decode to a Perl character string so DBD::mysql doesn't pass invalid UTF-8 to MySQL.
-    $name = decode('UTF-8', $name, Encode::FB_DEFAULT) unless is_utf8($name);
+    $name = ::utf8_text($name);
     $name =~ s/[\x00-\x1f\x7f\x{FFFD}]//g;
     $name = substr($name, 0, 64);
 
@@ -452,7 +452,7 @@ sub flushDB {
     my $is_bot         = $self->{is_bot};
 
     # Snapshot frequently used fields
-    my $name          = is_utf8($self->{name}) ? $self->{name} : decode('UTF-8', $self->{name}, Encode::FB_DEFAULT);
+    my $name          = ::utf8_text($self->{name});
     $name =~ s/[\x00-\x1f\x7f]//g;
     $name = substr($name, 0, 64);
     my $clan          = $self->{clan} + 0;

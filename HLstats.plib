@@ -9,7 +9,7 @@
 # For current support and updates, visit: https://snipezilla.com or https://github.com/SnipeZilla
 
 # HLstatsZ release version number
-$g_version = "2.5.12";
+$g_version = "2.5.13";
 
 my %stmt_cache = ();
 %g_eventTables = (
@@ -58,11 +58,34 @@ my %stmt_cache = ();
 #         Common Functions         #
 ####################################
 
+#
+# string utf8_text (string text)
+#
+# Text a game server sent (a chat line, a name, a clan tag) as a Perl character string, ready for the database
+# (DBD::mysql with mysql_enable_utf8mb4 encodes it once): its UTF-8 bytes decoded.
+#
+
+sub utf8_text
+{
+    my ($text) = @_;
+    return $text unless defined $text && length $text;
+
+    if (Encode::is_utf8($text)) {
+        return $text if $text =~ /[^\x00-\xFF]/;    # characters past U+00FF: decoded already
+        return $text unless $text =~ /[\x80-\xFF]/; # ASCII
+        my $bytes = $text;
+        utf8::downgrade($bytes, 1) or return $text;
+        my $copy    = $bytes;
+        my $decoded = eval { Encode::decode('UTF-8', $copy, Encode::FB_CROAK) };
+        # Not UTF-8 ("Café" as decoded Latin-1 text): it was text already
+        return defined $decoded ? $decoded : $text;
+    }
+    return Encode::decode('UTF-8', $text, Encode::FB_DEFAULT);
+}
+
 sub quote_sql {
     my ($val) = @_;
     return "NULL" unless defined $val;
-    $val =~ s/\\/\\\\/g;   # replace \ with \\
-    $val =~ s/'/\\'/g;     # replace ' with \'
     $val =~ s/\\/\\\\/g;   # replace \ with \\
     $val =~ s/'/\\'/g;     # replace ' with \'
     return "'$val'";

@@ -614,8 +614,8 @@ sub getClanId {
 
     return 0 unless defined $clanTag && length $clanTag;
 
-    $clanTag  = decode('UTF-8', $clanTag,  Encode::FB_DEFAULT) unless is_utf8($clanTag);
-    $clanName = decode('UTF-8', $clanName, Encode::FB_DEFAULT) unless is_utf8($clanName);
+    $clanTag  = utf8_text($clanTag);
+    $clanName = utf8_text($clanName);
 
     my $sql_check = q{
         SELECT clanId FROM hlstats_Clans WHERE tag=? AND game=? LIMIT 1

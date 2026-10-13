@@ -899,7 +899,7 @@ sub doEvent_ChangeName
 {
     my ($playerId, $playerUniqueId, $newname) = @_;
     $newname =~ s/[\x00-\x1f\x7f]//g;
-    $newname = Encode::decode('UTF-8', $newname, Encode::FB_DEFAULT) unless Encode::is_utf8($newname);
+    $newname = utf8_text($newname);
     $newname = substr($newname, 0, 63);   # varchar(64) in characters
 
     my $desc="";
@@ -2078,7 +2078,7 @@ sub doEvent_Chat
         $player->updateDB();
         my $p_userid = $g_servers{$s_addr}->format_userid($player->{userid});
         $message =~ s/^!//;
-        $message = Encode::decode('UTF-8', $message, Encode::FB_DEFAULT) unless Encode::is_utf8($message);
+        $message = utf8_text($message);   # decoded once, whatever came (HLstats.plib)
         $message = substr($message, 0, 128);
         my $messagelen = length($message);
         
