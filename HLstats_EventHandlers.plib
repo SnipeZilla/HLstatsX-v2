@@ -639,7 +639,11 @@ sub doEvent_Disconnect
 sub doEvent_Clan
 {
     my ($playerId, $playerUniqueId, $clantag) = @_;
-    
+    if (defined $clantag) {
+        $clantag =~ s/[\x00-\x1f\x7f]//g;
+        $clantag = utf8_text($clantag);
+    }
+
     my $desc="";
     my $info="";
     my $player = lookupPlayer($s_addr, $playerId, $playerUniqueId);

@@ -277,6 +277,7 @@ sub buildEventInsertData {
 }
 
 sub recordEvent {
+    no bytes;   # the values are decoded text
     my ($table, $unused, @coldata) = @_;
 
     my $server    = $g_servers{$s_addr} or return;
@@ -302,6 +303,7 @@ sub recordEvent {
 }
 
 sub flushEventTable {
+    no bytes;
     my ($table) = @_;
     my $queue_ref = $g_eventtable_data{$table}{queue};
     my $count     = scalar(@{$queue_ref});
