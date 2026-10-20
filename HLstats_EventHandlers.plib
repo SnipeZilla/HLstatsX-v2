@@ -380,8 +380,8 @@ sub doEvent_Connect
             $player->set("connect_time", time());
             my $player_rank = 0;
             $player_rank = $player->getRank();
-            if ($min_players_rank > 0 || $player_rank == 0) {
-                if ($player_rank > $min_players_rank) {
+            if ($player->{is_bot} == 0 && $min_players_rank > 0) {
+                if ($player_rank > $min_players_rank || $player_rank == 0) {
                     my $steamid = $player->{uniqueid};
                     my $p_steamid = $player->{plain_uniqueid};
                     if ($g_servers{$s_addr}->is_admin($steamid) == 0) {
@@ -393,12 +393,10 @@ sub doEvent_Connect
                     }
                 }
             }
-            
             if ($g_mode eq "LAN")
             {
                 $player->set("uniqueid", $ipAddr);
             }
-
             recordEvent(
                 "Connects", 0,
                 $player->{playerid},
