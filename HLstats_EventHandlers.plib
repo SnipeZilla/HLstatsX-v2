@@ -380,7 +380,7 @@ sub doEvent_Connect
             $player->set("connect_time", time());
             my $player_rank = 0;
             $player_rank = $player->getRank();
-            if ($min_players_rank > 0 || $player_rank == 0) {
+            if ($player->{is_bot} == 0 && ($min_players_rank > 0 || $player_rank == 0)) {
                 if ($player_rank > $min_players_rank) {
                     my $steamid = $player->{uniqueid};
                     my $p_steamid = $player->{plain_uniqueid};
